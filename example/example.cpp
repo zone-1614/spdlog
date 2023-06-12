@@ -36,21 +36,27 @@ int main(int, char *[])
     // Log levels can be loaded from argv/env using "SPDLOG_LEVEL"
     load_levels_example();
 
+    // spd 里面用了 fmt 这个库， 可以很好的格式化输出
+    // 下面是最常用的几个用法， 用不同level的log
+    // log 的 level 从低到高
+    // trace, debug, info, warn, error, critical
     spdlog::info("Welcome to spdlog version {}.{}.{}  !", SPDLOG_VER_MAJOR, SPDLOG_VER_MINOR, SPDLOG_VER_PATCH);
-
+    spdlog::error("error~");
     spdlog::warn("Easy padding in numbers like {:08d}", 12);
     spdlog::critical("Support for int: {0:d};  hex: {0:x};  oct: {0:o}; bin: {0:b}", 42);
-    spdlog::info("Support for floats {:03.2f}", 1.23456);
-    spdlog::info("Positional args are {1} {0}..", "too", "supported");
-    spdlog::info("{:>8} aligned, {:<8} aligned", "right", "left");
+    spdlog::info("Support for floats {:.2f}", 1.23456); // .2表示小数点后两位
+    spdlog::info("Positional args are {1} {0}..", "too", "supported"); // 给参数定位
+    spdlog::info("{:>8} aligned, {:<8} aligned", "right", "left"); // 长度以及对其
 
     // Runtime log levels
+    // log level 设置为 info， 所以低于info的debug不会显示， 大于等于info的才会显示
     spdlog::set_level(spdlog::level::info); // Set global log level to info
     spdlog::debug("This message should not be displayed!");
     spdlog::set_level(spdlog::level::trace); // Set specific logger's log level
     spdlog::debug("This message should be displayed..");
 
     // Customize msg format for all loggers
+    // 自定义格式， 这个set pattern会对所有的logger 生效
     spdlog::set_pattern("[%H:%M:%S %z] [%^%L%$] [thread %t] %v");
     spdlog::info("This an info message with custom format");
     spdlog::set_pattern("%+"); // back to default format
@@ -59,12 +65,16 @@ int main(int, char *[])
     // Backtrace support
     // Loggers can store in a ring buffer all messages (including debug/trace) for later inspection.
     // When needed, call dump_backtrace() to see what happened:
+    // backtrace 中文翻译成回溯. 这里是把log的内容都存起来, 最后再一起输出
+    // 这里设置只能存10条log
     spdlog::enable_backtrace(10); // create ring buffer with capacity of 10  messages
+    // 这里 log 100 次, 因为buffer只有10个, 所以只剩下最后十个
     for (int i = 0; i < 100; i++)
     {
         spdlog::debug("Backtrace message {}", i); // not logged..
     }
     // e.g. if some error happened:
+    // 把所有log吐出来
     spdlog::dump_backtrace(); // log them now!
 
     try
@@ -112,7 +122,26 @@ int main(int, char *[])
 void stdout_logger_example()
 {
     // Create color multi threaded logger.
-    auto console = spdlog::stdout_color_mt("console");
+    // 后缀 mt 是 multi thread, 还有另一个后缀为 st 的版本, 意思是 single thread
+    // spdlog对每个logger都提供了多线程和单线程版本, 但是并不需要多写很多代码, 因为无论是哪种版本, 
+    // 只要传入一个类型参数 Mutex, 而对于这个 Mutex, 如果传入std::mutex, 那就是线程安全的版本, 适用于多线程的环境.
+    // 如果不需要线程安全, 就传入spdlog自定义的一个类 null_mutex, 里面的 lock 和 unlock 方法是空实现.
+
+    // 再说说spdlog创建一个logger的方法. 用的是工厂模式. 在Factory中定义一个静态的create函数, 
+    // 传入logger的名字和其他参数, 并返回一个logger的shared_ptr. 
+    // 对于不同的logger, 创建的时候需要不同的参数. 这里用的是c++的一些模板参数推断和参数包转发的功能
+    // 这些应该都是c++11的特性, 读c++primer的时候有看到过, 一直没机会用上(其实一般也不会用到), 这些特性
+    // 都是给写库的人用的. 
+    auto console = spdlog::stdout_color_mt("console"); // 传入的参数是logger的名字
+
+    // 这里贴一下这个stdout_color_mt函数的具体实现, 因为里面有个不认识的语法
+    // return Factory::template create<sinks::stdout_color_sink_mt>(logger_name, mode);
+    // Factory后面为什么要跟着template呢?  (这里贴一篇 milo yip 的知乎, https://zhuanlan.zhihu.com/p/20029820)
+    // 因为对于一个模板, 你不知道Factory::hehe, 这个hehe是变量还是函数还是类型, 所以在这里需要指定create是一个模板函数,
+    // 因此必须写 Factory::template create
+    // 在 :: . -> 之后一定要写template
+    // 写zmesh的时候也遇到过类似的问题, 不知道模板里的东西是函数还是变量还是类型名, 需要显示地写 typename, 表明它是一个类型名
+
     // or for stderr:
     // auto console = spdlog::stderr_color_mt("error-logger");
 }
@@ -121,6 +150,7 @@ void stdout_logger_example()
 void basic_example()
 {
     // Create basic file logger (not rotated).
+    // 这个例子是log到文件里, 第一个参数是logger的名字, 第二个参数是log文件路径, 第三个参数是是否truncate
     auto my_logger = spdlog::basic_logger_mt("file_logger", "logs/basic-log.txt", true);
 }
 
@@ -128,6 +158,8 @@ void basic_example()
 void rotating_example()
 {
     // Create a file rotating logger with 5mb size max and 3 rotated files.
+    // log rotate中文译为日志轮换, 下面的例子是3个5m的文件
+    // 填满一个文件之后, 就去填下一个空的文件, 直到三个都满了, 就把最先填满的那个清空, 写到那里面
     auto rotating_logger = spdlog::rotating_logger_mt("some_logger_name", "logs/rotating.txt", 1048576 * 5, 3);
 }
 

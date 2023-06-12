@@ -102,7 +102,7 @@ private:
     bool set_level_from_cfg_(logger *logger);
     std::mutex logger_map_mutex_, flusher_mutex_;
     std::recursive_mutex tp_mutex_;
-    std::unordered_map<std::string, std::shared_ptr<logger>> loggers_;
+    std::unordered_map<std::string, std::shared_ptr<logger>> loggers_; // 所有的logger， 这个map是logger的名字对应到 logger的shared pointer
     log_levels log_levels_;
     std::unique_ptr<formatter> formatter_;
     spdlog::level::level_enum global_log_level_ = level::info;

@@ -36,7 +36,7 @@ SPDLOG_INLINE rotating_file_sink<Mutex>::rotating_file_sink(
         throw_spdlog_ex("rotating sink constructor: max_size arg cannot be zero");
     }
 
-    if (max_files > 200000)
+    if (max_files > 200000) // 最大文件不要超过 20w 个
     {
         throw_spdlog_ex("rotating sink constructor: max_files arg cannot exceed 200000");
     }
