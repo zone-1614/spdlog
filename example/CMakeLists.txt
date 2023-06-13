@@ -29,3 +29,11 @@ if(SPDLOG_BUILD_EXAMPLE_HO)
     add_executable(steal_str_header_only steal_str.cpp)
     target_link_libraries(steal_str_header_only PRIVATE spdlog::spdlog_header_only)
 endif()
+
+add_executable(steal_str2 steal_str2.cpp)
+target_link_libraries(steal_str2 PRIVATE spdlog::spdlog $<$<BOOL:${MINGW}>:ws2_32>)
+
+if(SPDLOG_BUILD_EXAMPLE_HO)
+    add_executable(steal_str2_header_only steal_str2.cpp)
+    target_link_libraries(steal_str2_header_only PRIVATE spdlog::spdlog_header_only)
+endif()
