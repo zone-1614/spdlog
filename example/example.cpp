@@ -160,6 +160,7 @@ void rotating_example()
     // Create a file rotating logger with 5mb size max and 3 rotated files.
     // log rotate中文译为日志轮换, 下面的例子是3个5m的文件
     // 填满一个文件之后, 就去填下一个空的文件, 直到三个都满了, 就把最先填满的那个清空, 写到那里面
+    // 原理暂时不看, 先大致搞懂spdlog的结构
     auto rotating_logger = spdlog::rotating_logger_mt("some_logger_name", "logs/rotating.txt", 1048576 * 5, 3);
 }
 
@@ -167,16 +168,36 @@ void rotating_example()
 void daily_example()
 {
     // Create a daily logger - a new file is created every day on 2:30am.
+    // daily logger 是每天定时开始新的log文件
     auto daily_logger = spdlog::daily_logger_mt("daily_logger", "logs/daily.txt", 2, 30);
 }
 
 #include "spdlog/sinks/callback_sink.h"
+#include <iostream>
+#include <vector>
 void callback_example()
 {
     // Create the logger
-    auto logger = spdlog::callback_logger_mt("custom_callback_logger", [](const spdlog::details::log_msg & /*msg*/) {
-        // do what you need to do with msg
+    // 带有回调的logger
+    // auto logger = spdlog::callback_logger_mt("custom_callback_logger", [](const spdlog::details::log_msg & /*msg*/) {
+    //     // do what you need to do with msg
+    // });
+    auto logger = spdlog::callback_logger_mt("custom_callback_logger", [](const spdlog::details::log_msg & msg) {
+        std::cout << std::string("wuhu ") + msg.payload.data() << std::endl;
     });
+    auto d = spdlog::default_logger();
+    d->sinks().push_back(std::make_shared<spdlog::sinks::callback_sink_mt>([](const spdlog::details::log_msg & msg) {
+        // 为什么下面这样做会输出乱码
+        // std::cout << std::string(msg.payload.data()) << std::endl;
+        std::string st(msg.payload.data());
+        std::cout << st.length() << std::endl;
+    }));
+    // logger->set_pattern("%+");
+    // logger->info("zone callback logger hehehehe");
+    // logger->error("zone callback logger hehehehe");
+    // logger->critical("zone callback logger hehehehe");
+    spdlog::info("asdasd");
+    // spdlog::set_default_logger(d);
 }
 
 #include "spdlog/cfg/env.h"
